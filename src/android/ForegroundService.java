@@ -23,6 +23,7 @@ package de.appplant.cordova.plugin.background;
 
 import android.annotation.TargetApi;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -33,8 +34,13 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.provider.Settings;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 
 import org.json.JSONObject;
+
+import it.peopletrust.octobike.R;
 
 import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
 
@@ -64,6 +70,8 @@ public class ForegroundService extends Service {
 
     // Partial wake lock to prevent the app from going to sleep when locked
     private PowerManager.WakeLock wakeLock;
+
+  static final String CHANNEL_ID = "it.peopletrust.octobike.BikeBT";
 
     /**
      * Allow clients to call on to the service.
@@ -162,19 +170,21 @@ public class ForegroundService extends Service {
         Intent intent   = context.getPackageManager()
                 .getLaunchIntentForPackage(pkgName);
 
-        Notification.Builder notification = new Notification.Builder(context)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setOngoing(true)
-                .setSmallIcon(getIconResId(settings));
+      NotificationCompat.Builder notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_notification)
+        .setContentTitle(title)
+        .setContentText(text)
+        .setSound(null)
+        .setVibrate(null)
+        .setTicker(text);
 
         if (settings.optBoolean("hidden", true)) {
             notification.setPriority(Notification.PRIORITY_MIN);
         }
 
         if (bigText || text.contains("\n")) {
-            notification.setStyle(
-                    new Notification.BigTextStyle().bigText(text));
+            notification.setStyle(new NotificationCompat.BigTextStyle()
+            .bigText(text));
         }
 
         setColor(notification, settings);
@@ -188,6 +198,11 @@ public class ForegroundService extends Service {
 
             notification.setContentIntent(contentIntent);
         }
+
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        createChannel();
+        notification.setChannelId(CHANNEL_ID);
+      }
 
         return notification.build();
     }
@@ -206,6 +221,7 @@ public class ForegroundService extends Service {
         }
 
         Notification notification = makeNotification(settings);
+
         getNotificationManager().notify(NOTIFICATION_ID, notification);
     }
 
@@ -255,7 +271,7 @@ public class ForegroundService extends Service {
      * @param settings A JSON dict containing the color definition (red: FF0000)
      */
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private void setColor(Notification.Builder notification,
+    private void setColor(NotificationCompat.Builder notification,
                           JSONObject settings) {
 
         String hex = settings.optString("color", null);
@@ -275,7 +291,21 @@ public class ForegroundService extends Service {
      * Shared manager for the notification service.
      */
     private NotificationManager getNotificationManager() {
-        return (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+      return (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+    }
+
+    @TargetApi(26)
+    private void createChannel() {
+      String name = "BikeBT";
+      String description = "Notifications for bike connection";
+      int importance = NotificationManager.IMPORTANCE_DEFAULT;
+
+      NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
+      mChannel.setDescription(description);
+      mChannel.setSound(null,null);
+      mChannel.enableLights(false);
+      mChannel.enableVibration(false);
+      getNotificationManager().createNotificationChannel(mChannel);
     }
 
 }
