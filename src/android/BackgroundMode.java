@@ -23,8 +23,10 @@ package de.appplant.cordova.plugin.background;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.IBinder;
 
 import org.apache.cordova.CallbackContext;
@@ -45,7 +47,7 @@ public class BackgroundMode extends CordovaPlugin {
     }
 
     // Plugin namespace
-    private static final String JS_NAMESPACE =
+    public static final String JS_NAMESPACE =
             "cordova.plugins.backgroundMode";
 
     // Flag indicates if the app is in background or foreground
@@ -198,6 +200,7 @@ public class BackgroundMode extends CordovaPlugin {
      */
     private void setDefaultSettings(JSONObject settings) {
         defaultSettings = settings;
+        saveSettings();
     }
 
     /**
@@ -217,6 +220,8 @@ public class BackgroundMode extends CordovaPlugin {
      */
     private void updateNotification(JSONObject settings) {
         if (isBind) {
+            defaultSettings = settings;
+            saveSettings();
             service.updateNotification(settings);
         }
     }
@@ -289,6 +294,14 @@ public class BackgroundMode extends CordovaPlugin {
                 webView.loadUrl("javascript:" + js);
             }
         });
+    }
+
+    private void saveSettings() {
+      Context context = cordova.getActivity();
+      SharedPreferences sharedPref = context.getSharedPreferences(JS_NAMESPACE, Context.MODE_PRIVATE);
+      SharedPreferences.Editor editor = sharedPref.edit();
+      editor.putString("defaultSettings", defaultSettings.toString());
+      editor.commit();
     }
 
 }
